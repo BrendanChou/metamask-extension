@@ -322,14 +322,22 @@ const buildJsFiles = [
 ]
 
 // bundle tasks
-createTasksForBuildJsDeps({ filename: 'bg-libs', key: 'background' })
+createTasksForBuildJsDeps({
+  filename: 'bg-libs',
+  key: 'background',
+  extraBundleTaskOpts: {
+    buildSourceMaps: false,
+    minifyBuild: false,
+    ignoreTransform: ['babelify', 'brfs', 'envify'],
+  },
+})
 createTasksForBuildJsDeps({ filename: 'ui-libs', key: 'ui' })
 createTasksForBuildJsExtension({ buildJsFiles, taskPrefix: 'dev:extension:js', devMode: true })
 createTasksForBuildJsExtension({ buildJsFiles, taskPrefix: 'dev:test-extension:js', devMode: true, testing: 'true' })
 createTasksForBuildJsExtension({ buildJsFiles, taskPrefix: 'build:extension:js' })
 createTasksForBuildJsExtension({ buildJsFiles, taskPrefix: 'build:test:extension:js', testing: 'true' })
 
-function createTasksForBuildJsDeps ({ key, filename }) {
+function createTasksForBuildJsDeps ({ extraBundleTaskOpts = {}, key, filename }) {
   const destinations = browserPlatforms.map(platform => `./dist/${platform}`)
 
 
@@ -346,7 +354,7 @@ function createTasksForBuildJsDeps ({ key, filename }) {
     destinations,
     buildLib: true,
     dependenciesToBundle: externalDependenciesMap[key],
-  }, bundleTaskOpts)))
+  }, bundleTaskOpts, extraBundleTaskOpts)))
 }
 
 
@@ -499,6 +507,7 @@ function generateBundler (opts, performBundle) {
     plugin: 'browserify-derequire',
     debug: opts.buildSourceMaps,
     fullPaths: opts.buildWithFullPaths,
+    ignoreTransform: opts.ignoreTransform,
   })
 
   if (!opts.buildLib) {
@@ -521,16 +530,20 @@ function generateBundler (opts, performBundle) {
     bundler = bundler.external(opts.externalDependencies)
   }
 
-  // inject variables into bundle
-  bundler.transform(envify({
-    METAMASK_DEBUG: opts.devMode,
-    NODE_ENV: opts.devMode ? 'development' : 'production',
-    IN_TEST: opts.testing,
-    PUBNUB_SUB_KEY: process.env.PUBNUB_SUB_KEY || '',
-    PUBNUB_PUB_KEY: process.env.PUBNUB_PUB_KEY || '',
-  }), {
-    global: true,
-  })
+  if (Array.isArray(opts.ignoreTransform) && opts.ignoreTransform.includes('envify')) {
+    // Skip envify
+  } else {
+    // Inject variables into bundle
+    bundler.transform(envify({
+      METAMASK_DEBUG: opts.devMode,
+      NODE_ENV: opts.devMode ? 'development' : 'production',
+      IN_TEST: opts.testing,
+      PUBNUB_SUB_KEY: process.env.PUBNUB_SUB_KEY || '',
+      PUBNUB_PUB_KEY: process.env.PUBNUB_PUB_KEY || '',
+    }), {
+      global: true,
+    })
+  }
 
   if (opts.watch) {
     bundler = watchify(bundler)
