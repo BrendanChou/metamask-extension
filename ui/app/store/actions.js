@@ -387,6 +387,7 @@ var actions = {
   getThreeBoxLastUpdated,
   setThreeBoxSyncingPermission,
   setRestoredFromThreeBox,
+  turnThreeBoxSyncingOn,
 }
 
 module.exports = actions
@@ -2848,6 +2849,20 @@ function setRestoredFromThreeBox (restored) {
   return (dispatch) => {
     return new Promise((resolve, reject) => {
       background.setRestoredFromThreeBox(restored, (err) => {
+        if (err) {
+          dispatch(actions.displayWarning(err.message))
+          return reject(err)
+        }
+        resolve()
+      })
+    })
+  }
+}
+
+function turnThreeBoxSyncingOn {
+  return (dispatch) => {
+    return new Promise((resolve, reject) => {
+      background.turnThreeBoxSyncingOn((err) => {
         if (err) {
           dispatch(actions.displayWarning(err.message))
           return reject(err)
